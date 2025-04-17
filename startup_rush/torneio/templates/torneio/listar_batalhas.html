@@ -1,0 +1,15 @@
+{% extends "torneio/base.html" %}
+{% block content %}
+  {% if rodada %}
+    <h1>Batalhas da Rodada {{ rodada.numeroDaRodada }}</h1>
+    <ul>
+      {% for b in batalhas %}
+        <li>{{ b.primeiraStartup.nome }} vs {{ b.segundaStartup.nome }}
+          {% if b.concluida %}– Concluída{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>Ainda não há nenhuma rodada iniciada.</p>
+  {% endif %}
+{% endblock %}

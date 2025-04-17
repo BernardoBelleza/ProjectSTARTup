@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Startup Rush{% endblock %}</title>
+</head>
+<body>
+  <header>
+    <h1>Startup Rush</h1>
+    <nav>
+      <a href="{% url 'torneio:home' %}">Início</a> |
+      <a href="{% url 'torneio:cadastro_startup' %}">Cadastrar</a>
+      <a href="{% url 'torneio:iniciar_torneio' %}">Listar Batalhas</a>
+    </nav>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+  <footer>
+    <p>© 2025 Startup Rush</p>
+  </footer>
+</body>
+</html>

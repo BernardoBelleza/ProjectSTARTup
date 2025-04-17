@@ -1,0 +1,25 @@
+{% extends "torneio/base.html" %}
+{% block content %}
+<h1>Startups Cadastradas</h1>
+<ul>
+  {% for s in startups %}
+    <li>{{ s.nome }} ({{ s.anoFundacao }})</li>
+  {% endfor %}
+</ul>
+
+{% if can_start %}
+  <form method="post" action="{% url 'torneio:listar_batalhas' %}">
+    {% csrf_token %}
+    <button type="submit">Iniciar Torneio</button>
+  </form>
+{% else %}
+  <p>
+    Cadastre entre 4 e 8 startups (número par).  
+    <a href="{% url 'torneio:cadastro_startup' %}">Adicionar mais</a>
+  </p>
+{% endif %}
+
+{% for message in messages %}
+  <div class="error">{{ message }}</div>
+{% endfor %}
+{% endblock %}
