@@ -1,15 +1,25 @@
 {% extends "torneio/base.html" %}
 {% block content %}
-  {% if rodada %}
-    <h1>Batalhas da Rodada {{ rodada.numeroDaRodada }}</h1>
-    <ul>
-      {% for b in batalhas %}
-        <li>{{ b.primeiraStartup.nome }} vs {{ b.segundaStartup.nome }}
-          {% if b.concluida %}– Concluída{% endif %}
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p>Ainda não há nenhuma rodada iniciada.</p>
-  {% endif %}
+  {% for bloco in todas_rodadas %}
+    <section>
+      <h2>Rodada {{ bloco.rodada.numeroDaRodada }}</h2>
+      <ul>
+        {% for b in bloco.batalhas %}
+          <li>
+            {{ b.primeiraStartup.nome }} vs {{ b.segundaStartup.nome }}
+            {% if b.concluida %}
+              – <strong>Concluída</strong>
+              {% if b.vencedor %}
+                (Vencedor: {{ b.vencedor.nome }})
+              {% endif %}
+            {% else %}
+              – <a href="{% url 'torneio:administrar_batalha' batalha_id=b.id %}">
+                   Administrar
+                 </a>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+  {% endfor %}
 {% endblock %}

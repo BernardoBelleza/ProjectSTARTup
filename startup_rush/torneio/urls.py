@@ -12,10 +12,26 @@ urlpatterns = [
       views.iniciar_torneio,
       name='iniciar_torneio'
     ),
-    # path('listar_batalhas/', views.listar_batalhas,  name='listar_batalhas'),
+    # # path('listar_batalhas/', views.listar_batalhas,  name='listar_batalhas'),
+    # path(
+    # 'rodada/<int:rodada_numero>/batalhas/',
+    # views.listar_batalhas,
+    # name='listar_batalhas'
+    # ),
+    
     path(
-    'rodada/<int:rodada_numero>/batalhas/',
-    views.listar_batalhas,
+    'batalhas/',
+    views.listar_batalhas,     # agora a view não recebe rodada_numero
     name='listar_batalhas'
     ),
+    path(
+      'batalha/<int:batalha_id>/administrar/',
+      views.administrar_batalha,
+      name='administrar_batalha'
+    ),
+    # path(
+    #     'batalha/<int:batalha_id>/encerrar/',
+    #     views.encerrar_batalha,
+    #     name='encerrar_batalha'
+    # ),
 ]

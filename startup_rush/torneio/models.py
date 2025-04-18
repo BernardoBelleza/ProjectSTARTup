@@ -33,3 +33,7 @@ class Evento(models.Model):
     batalha = models.ForeignKey(Batalha, on_delete=models.CASCADE)
     tipo    = models.CharField(max_length=15, choices=POSSIVEIS_EVENTOS)
     startup = models.ForeignKey(Startup, on_delete=models.CASCADE)
+
+
+
+    

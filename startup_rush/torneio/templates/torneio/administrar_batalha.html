@@ -1,0 +1,49 @@
+{# torneio/templates/torneio/administrar_batalha.html #}
+{% extends "torneio/base.html" %}
+{% block content %}
+  <h1>Administrar Batalha {{ batalha.id }}</h1>
+  <p>
+    {{ batalha.primeiraStartup.nome }}
+    vs
+    {{ batalha.segundaStartup.nome }}
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    {# Checkboxes para a primeira startup #}
+    <fieldset>
+      <legend>{{ batalha.primeiraStartup.nome }}</legend>
+      {% for key,label in tipos_de_evento %}
+        <label>
+          <input
+            type="checkbox"
+            name="eventos"
+            value="{{ batalha.primeiraStartup.id }}:{{ key }}"
+          >
+          {{ label }}
+        </label><br>
+      {% endfor %}
+    </fieldset>
+
+    {# Checkboxes para a segunda startup #}
+    <fieldset>
+      <legend>{{ batalha.segundaStartup.nome }}</legend>
+      {% for key,label in tipos_de_evento %}
+        <label>
+          <input
+            type="checkbox"
+            name="eventos"
+            value="{{ batalha.segundaStartup.id }}:{{ key }}"
+          >
+          {{ label }}
+        </label><br>
+      {% endfor %}
+    </fieldset>
+
+    {# Botão para encerrar a batalha com toda a lógica de pontuação #}
+    <button type="submit" name="acao" value="encerrar">Encerrar Batalha</button>
+  </form>
+
+  
+{% endblock %}
