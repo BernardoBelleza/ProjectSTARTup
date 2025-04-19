@@ -3,12 +3,25 @@
 <h1>Startups Cadastradas</h1>
 <ul>
   {% for s in startups %}
-    <li>{{ s.nome }} ({{ s.anoFundacao }})</li>
+    <li>
+      {{ s.nome }} ({{ s.anoFundacao }})
+
+      {# --- botão de excluir --- #}
+      <form method="post"
+            action="{% url 'torneio:excluir_startup' s.id %}"
+            style="display:inline">
+        {% csrf_token %}
+        <button type="submit"
+                onclick="return confirm('Excluir {{ s.nome }}?');">
+          Excluir
+        </button>
+      </form>
+    </li>
   {% endfor %}
 </ul>
 
-{% if can_start %}
-  <form method="post" action="{% url 'torneio:listar_batalhas' %}">
+{% if foiValidado %}
+  <form method="post" action="{% url 'torneio:iniciar_torneio' %}">
     {% csrf_token %}
     <button type="submit">Iniciar Torneio</button>
   </form>
@@ -19,7 +32,8 @@
   </p>
 {% endif %}
 
+{# mensagens flash #}
 {% for message in messages %}
-  <div class="error">{{ message }}</div>
+  <div class="info">{{ message }}</div>
 {% endfor %}
 {% endblock %}

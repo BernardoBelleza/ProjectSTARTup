@@ -15,6 +15,7 @@ class Batalha(models.Model):
     segundaStartup = models.ForeignKey(Startup, on_delete=models.CASCADE, related_name='segundaStarBatalhas')
     rodada    = models.ForeignKey(Rodada, on_delete=models.CASCADE)
     concluida = models.BooleanField(default=False)
+    shark_fight = models.BooleanField(default=False)   
     vencedor  = models.ForeignKey(
         Startup,
         on_delete=models.SET_NULL,

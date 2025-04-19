@@ -32,7 +32,8 @@ urlpatterns = [
     # path('historico/<int:numero>/', views.historico_torneio,
     #  name='historico_torneio'),
     path('historico/', views.historico_torneios, name='historico_torneios'),
-
+    path("startup/<int:id>/excluir/", views.excluir_startup,
+         name="excluir_startup"),
     # path(
     #     'batalha/<int:batalha_id>/encerrar/',
     #     views.encerrar_batalha,

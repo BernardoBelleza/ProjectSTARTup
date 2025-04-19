@@ -11,6 +11,9 @@
             {{ b.primeiraStartup.nome }} vs {{ b.segundaStartup.nome }}
             {% if b.concluida %}
               – <strong>Concluída</strong>
+              {% if b.shark_fight %}
+                <em>(decidida por Shark Fight)</em>
+              {% endif %}
               {% if b.vencedor %}(Vencedor: {{ b.vencedor.nome }}){% endif %}
             {% else %}
               – <a href="{% url 'torneio:administrar_batalha' batalha_id=b.id %}">

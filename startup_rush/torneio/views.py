@@ -23,7 +23,29 @@ def listar_startups(request):
         'foiValidado': foiValidado,
     })
 
+def excluir_startup(request, id):
+    if request.method == "POST":
+        try:
+            Startup.objects.get(pk=id).delete()
+        except Startup.DoesNotExist:
+            pass            # simplesmente ignora se não existir
+    return redirect("torneio:listar_startups")
+
 def iniciar_torneio(request):
+
+    # 0) Se já houver um Torneio finalizado, apaga tudo pra recomeçar
+    ultimo = Torneio.objects.order_by('-numero').first()
+    if ultimo and ultimo.campea is not None:
+        # “Reinicia” as startups
+        Startup.objects.all().update(pontos=70)
+        # Limpa rodadas, batalhas e eventos
+        Evento.objects.all().delete()
+        Batalha.objects.all().delete()
+        Rodada.objects.all().delete()
+        # Limpa histórico de torneios
+        # TorneioStats.objects.all().delete()
+        # Torneio.objects.all().delete()
+
     # 1) Validação de número de startups
     count = Startup.objects.count()
     if not (4 <= count <= 8 and count % 2 == 0):
@@ -105,7 +127,18 @@ def listar_batalhas(request):
 
         if not pendentes:
             # vencedores da última rodada
-            vencedores = [b.vencedor for b in Batalha.objects.filter(rodada=ultima)]
+
+            batalhas_da_ultima_rodada = Batalha.objects.filter(rodada=ultima)
+            vencedores = [b.vencedor for b in batalhas_da_ultima_rodada if b.vencedor is not None]
+
+            if ultima.numeroDaRodada == 1 and batalhas_da_ultima_rodada.count() == 3:
+                 if len(vencedores) == 3: # Garante que temos 3 vencedores para comparar
+                    # Ordena os 3 vencedores pelos pontos (maior primeiro)
+                    vencedores.sort(key=lambda startup: startup.pontos, reverse=True)
+                    # REDEFINE a lista 'vencedores' para conter APENAS os 2 primeiros
+                    vencedores = vencedores[:2]
+
+            # vencedores = [b.vencedor for b in Batalha.objects.filter(rodada=ultima)]
 
             print("VENCEDORES:", vencedores)   # ← 2ª impressão
 
@@ -125,16 +158,19 @@ def listar_batalhas(request):
                             rodada=prox
                         )
                 rodadas.append(prox)          # para exibir no template
-            else:
+            if len(vencedores) == 1:
                 # -------- torneio acabou: gera estatísticas finais --------
                 estatisticas = gerar_estatisticas_por_eventos()
 
                 print("ESTATISTICAS:", estatisticas)  # ← 3ª impressão
 
                 if estatisticas:
-                    campea = estatisticas[0]['startup']          # ranking não vazio
+                    campea = estatisticas[0]['startup']
+                elif vencedores:                   # só se houver alguém na lista
+                    campea = vencedores[0]
                 else:
-                    campea = vencedores[0]  
+                    # Não deveria acontecer: loga e mostra mensagem
+                    campea = None
 
                 quantosTiveram = Torneio.objects.count()
 
@@ -213,48 +249,53 @@ def administrar_batalha(request, batalha_id):
                 )
 
         # 4) Se clicou em “Encerrar Batalha”, calcula vencedor
-        if acao == 'encerrar':
-            # Pontuações por tipo
+        if acao == "encerrar":
             valores = {
-                'PITCH': 6,
-                'BUGS': -4,
-                'TRACAO': 3,
-                'INVESTIRRITADO': -6,
-                'FAKENEWS': -8,
+                "PITCH": 6,
+                "BUGS": -4,
+                "TRACAO": 3,
+                "INVESTIRRITADO": -6,
+                "FAKENEWS": -8,
             }
-            # inicializa placar
-            placar = {
-                batalha.primeiraStartup.id: 0,
-                batalha.segundaStartup.id:  0,
-            }
-            # soma eventos
-            for ev in Evento.objects.filter(batalha=batalha):
-                placar[ev.startup.id] += valores[ev.tipo]
 
-            # desempate Shark Fight
+            # inicializa placar/saldo acumulado
             id1 = batalha.primeiraStartup.id
             id2 = batalha.segundaStartup.id
+            placar = {id1: 0, id2: 0}
+
+            # soma pontos / penalidades
+            for ev in Evento.objects.filter(batalha=batalha):
+                placar[ev.startup_id] += valores[ev.tipo]
+
+            # desempate Shark Fight
             if placar[id1] == placar[id2]:
                 escolhido = random.choice([id1, id2])
                 placar[escolhido] += 2
+                batalha.shark_fight = True 
 
-            # define vencedor
-            vencedor_id = id1 if placar[id1] > placar[id2] else id2
-            vencedor = Startup.objects.get(pk=vencedor_id)
+            # aplica o saldo de pontos a cada startup
+            s1 = batalha.primeiraStartup
+            s2 = batalha.segundaStartup
 
-            # salva vencedor e soma 30 pontos
-            batalha.vencedor = vencedor
+            s1.pontos += placar[id1]
+            s2.pontos += placar[id2]
+
+            # define vencedor e +30
+            vencedor = s1 if placar[id1] > placar[id2] else s2
+            vencedor.pontos += 30
+
+            # grava tudo
+            s1.save()
+            s2.save()
+
+            batalha.vencedor  = vencedor
             batalha.concluida = True
             batalha.save()
 
-            vencedor.pontos += 30
-            vencedor.save()
+            return redirect("torneio:listar_batalhas")
 
-            # redireciona para a listagem da rodada
-            return redirect(
-                'torneio:listar_batalhas',
                 # rodada_numero=batalha.rodada.numeroDaRodada
-            )
+            
 
         # Se foi apenas “Salvar Eventos”, recarrega a página pra ver o histórico
         return redirect('torneio:administrar_batalha', batalha_id=batalha.id)
