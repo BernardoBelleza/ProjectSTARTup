@@ -1,25 +1,64 @@
 {% extends "torneio/base.html" %}
 {% block content %}
+
+  {# ---------- histórico de rodadas ---------- #}
   {% for bloco in todas_rodadas %}
     <section>
       <h2>Rodada {{ bloco.rodada.numeroDaRodada }}</h2>
       <ul>
         {% for b in bloco.batalhas %}
           <li>
-            {{ b.primeiraStartup.nome }} vs {{ b.segundaStartup.nome }}
+            {{ b.primeiraStartup.nome }} vs {{ b.segundaStartup.nome }}
             {% if b.concluida %}
               – <strong>Concluída</strong>
-              {% if b.vencedor %}
-                (Vencedor: {{ b.vencedor.nome }})
-              {% endif %}
+              {% if b.vencedor %}(Vencedor: {{ b.vencedor.nome }}){% endif %}
             {% else %}
               – <a href="{% url 'torneio:administrar_batalha' batalha_id=b.id %}">
-                   Administrar
-                 </a>
+                  Administrar
+                </a>
             {% endif %}
           </li>
         {% endfor %}
       </ul>
     </section>
   {% endfor %}
+
+
+  {# ---------- estatísticas finais ---------- #}
+  {% if estatisticas is not None %}
+    <hr>
+    <h2>Classificação Final</h2>
+
+    {% if estatisticas %}
+      {# --- ranking completo --- #}
+      <table border="1" cellpadding="4">
+        <tr>
+          <th>Pos</th><th>Startup</th><th>Pontos</th>
+          <th>Pitches (+6)</th><th>Bugs (-4)</th><th>Trações (+3)</th>
+          <th>Invest. Irritados (-6)</th><th>Fake News (-8)</th>
+        </tr>
+        {% for d in estatisticas %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ d.startup.nome }}</td>
+            <td>{{ d.pontos }}</td>
+            <td>{{ d.pitches }}</td>
+            <td>{{ d.bugs }}</td>
+            <td>{{ d.tracoes }}</td>
+            <td>{{ d.investidores }}</td>
+            <td>{{ d.penalidades }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+
+      <h3>Campeã: {{ estatisticas.0.startup.nome }} – “{{ estatisticas.0.startup.slogan }}”</h3>
+
+    {% else %}
+      {# --- não houve eventos; mostra só a campeã --- #}
+      <p>Nenhum evento foi registrado durante o torneio.</p>
+      <h3>Campeã: {{ campea.nome }} – “{{ campea.slogan }}”</h3>
+    {% endif %}
+
+  {% endif %}
+
 {% endblock %}

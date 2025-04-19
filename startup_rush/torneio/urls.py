@@ -29,6 +29,10 @@ urlpatterns = [
       views.administrar_batalha,
       name='administrar_batalha'
     ),
+    # path('historico/<int:numero>/', views.historico_torneio,
+    #  name='historico_torneio'),
+    path('historico/', views.historico_torneios, name='historico_torneios'),
+
     # path(
     #     'batalha/<int:batalha_id>/encerrar/',
     #     views.encerrar_batalha,

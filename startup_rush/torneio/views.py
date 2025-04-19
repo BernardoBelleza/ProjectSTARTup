@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from .models import Startup, Rodada, Batalha, Evento
+from .models import Startup, Rodada, Batalha, Evento, Torneio, TorneioStats
 from .forms import StartupForm
 import random
 from django.http import HttpResponse
@@ -88,54 +88,96 @@ def iniciar_torneio(request):
 
 def listar_batalhas(request):
     """
-    Lista todas as batalhas de todas as rodadas já criadas.
-    Se a última rodada estiver 100% concluída, gera a próxima rodada
-    usando apenas os vencedores e exibe estas batalhas também.
+    • Mostra todas as batalhas já criadas.
+    • Se a última rodada terminou:
+        – Se sobram ≥2 vencedores → cria próxima rodada.
+        – Se sobrou 1 vencedor   → mostra estatísticas finais.
     """
-    # 1) Carrega todas as rodadas existentes, em ordem crescente
     rodadas = list(Rodada.objects.order_by('numeroDaRodada'))
-
+    estatisticas = None      # continuará None até ter campeão
+    campea       = None        # ← inicializa aqui!
+    
     if rodadas:
-        ultima = rodadas[-1]  # a rodada de maior número
-        # 2) Verifica se há alguma batalha pendente nela
+        ultima = rodadas[-1]
         pendentes = Batalha.objects.filter(rodada=ultima, concluida=False).exists()
 
-        # 3) Se a última rodada estiver totalmente concluída, garantimos que
-        #    exista a próxima rodada usando só os vencedores
+        print("PENDENTES:", pendentes)   # ← 1ª impressão
+
         if not pendentes:
-            # checa se a próxima rodada já foi criada (por safety)
-            proximo_num = ultima.numeroDaRodada + 1
-            prox = Rodada.objects.filter(numeroDaRodada=proximo_num).first()
-            if not prox:
-                # pega apenas os vencedores da última
-                vencedores = [b.vencedor for b in Batalha.objects.filter(rodada=ultima)]
-                # cria a nova rodada
-                prox = Rodada.objects.create(numeroDaRodada=proximo_num)
-                # embaralha e pareia só os vencedores
-                random.shuffle(vencedores)
-                while vencedores:
-                    s1 = vencedores.pop(0)
-                    s2 = vencedores.pop(0)
-                    Batalha.objects.create(
-                        primeiraStartup=s1,
-                        segundaStartup=s2,
-                        rodada=prox
-                    )
-            # adiciona a próxima rodada no final da lista
-            rodadas.append(prox)
+            # vencedores da última rodada
+            vencedores = [b.vencedor for b in Batalha.objects.filter(rodada=ultima)]
 
-    # 4) Para cada rodada, busca suas batalhas
-    todas_batalhas = []
+            print("VENCEDORES:", vencedores)   # ← 2ª impressão
+
+            if len(vencedores) > 1:
+                # -------- cria próxima rodada com os vencedores --------
+                proximo_num = ultima.numeroDaRodada + 1
+                prox = Rodada.objects.filter(numeroDaRodada=proximo_num).first()
+                if not prox:
+                    prox = Rodada.objects.create(numeroDaRodada=proximo_num)
+                    random.shuffle(vencedores)
+                    while vencedores:
+                        s1 = vencedores.pop(0)
+                        s2 = vencedores.pop(0)
+                        Batalha.objects.create(
+                            primeiraStartup=s1,
+                            segundaStartup=s2,
+                            rodada=prox
+                        )
+                rodadas.append(prox)          # para exibir no template
+            else:
+                # -------- torneio acabou: gera estatísticas finais --------
+                estatisticas = gerar_estatisticas_por_eventos()
+
+                print("ESTATISTICAS:", estatisticas)  # ← 3ª impressão
+
+                if estatisticas:
+                    campea = estatisticas[0]['startup']          # ranking não vazio
+                else:
+                    campea = vencedores[0]  
+
+                quantosTiveram = Torneio.objects.count()
+
+                # próximo número é sempre +1
+                numero_do_torneio = quantosTiveram + 1
+
+                # numero_do_torneio = Torneio.objects.count()        # ou outro critério
+                # campea = estatisticas[0]['startup']               # primeiro da lista
+
+                if not Torneio.objects.filter(numero=numero_do_torneio).exists():
+                    torneio = Torneio.objects.create(numero=numero_do_torneio, campea=campea)
+                else:
+                    torneio = Torneio.objects.get(numero=numero_do_torneio)
+
+                # torneio = Torneio.objects.create(
+                #     numero=numero_do_torneio,
+                #     campea=campea
+                # )
+                if not torneio.statsJaSalvos:
+                    for d in estatisticas:
+                        TorneioStats.objects.create(
+                            torneio      = torneio,
+                            startup      = d['startup'],
+                            pontos       = d['pontos'],
+                            pitches      = d['pitches'],
+                            bugs         = d['bugs'],
+                            tracoes      = d['tracoes'],
+                            investidores = d['investidores'],
+                            penalidades  = d['penalidades'],
+                        )
+                    torneio.statsJaSalvos = True
+                    torneio.save()
+
+    # monta lista de rodadas + batalhas
+    todas_rodadas = []
     for r in rodadas:
-        batalhas_da_rodada = list(Batalha.objects.filter(rodada=r))
-        todas_batalhas.append({
-            'rodada': r,
-            'batalhas': batalhas_da_rodada
-        })
+        batalhas = list(Batalha.objects.filter(rodada=r))
+        todas_rodadas.append({'rodada': r, 'batalhas': batalhas})
 
-    # 5) Renderiza o template passando o histórico completo
     return render(request, 'torneio/listar_batalhas.html', {
-        'todas_rodadas': todas_batalhas
+        'todas_rodadas': todas_rodadas,
+        'estatisticas': estatisticas,     # None ou lista de stats
+        'campea'       : campea,         # sempre envia a campeã
     })
 
 def administrar_batalha(request, batalha_id):
@@ -228,6 +270,67 @@ def administrar_batalha(request, batalha_id):
         'participantes': participantes,
     })
 
+
+def gerar_estatisticas_por_eventos():
+    """
+    Percorre TODA a tabela Evento e devolve
+    uma lista de stats ordenada por pontos decrescente.
+    """
+    stats = {}  # chave: startup_id  →  valor: dicionário de contadores
+
+    # 1) percorre cada linha da tabela Evento
+    for ev in Evento.objects.select_related('startup'):
+        sid = ev.startup_id
+
+        # se a startup não está no dicionário, cria a estrutura
+        if sid not in stats:
+            stats[sid] = {
+                'startup': ev.startup,   # objeto Startup já carregado
+                'pontos':  ev.startup.pontos,
+                'pitches': 0,
+                'bugs': 0,
+                'tracoes': 0,
+                'investidores': 0,
+                'penalidades': 0,
+            }
+
+        # incrementa o contador correto
+        if ev.tipo == 'PITCH':
+            stats[sid]['pitches'] += 1
+        elif ev.tipo == 'BUGS':
+            stats[sid]['bugs'] += 1
+        elif ev.tipo == 'TRACAO':
+            stats[sid]['tracoes'] += 1
+        elif ev.tipo == 'INVESTIRRITADO':
+            stats[sid]['investidores'] += 1
+        elif ev.tipo == 'FAKENEWS':
+            stats[sid]['penalidades'] += 1
+
+    # 2) transforma em lista e ordena pelos pontos finais
+    lista_stats = list(stats.values())
+    lista_stats.sort(key=lambda d: d['pontos'], reverse=True)
+    return lista_stats
+
+def historico_torneios(request):
+    torneios = Torneio.objects.order_by('-numero')   # sempre mostrado
+    numero = request.GET.get('numero')               # opcional
+
+    torneio = None
+    estatisticas = None
+
+    torneio = Torneio.objects.filter(numero=numero).first()  # devolve objeto ou None
+
+    if numero:                                       # usuário escolheu algo?
+        torneio = Torneio.objects.filter(numero=numero).first()
+        if torneio is None:                          # número inválido
+            return HttpResponse("Torneio não encontrado", status=404)
+        estatisticas = torneio.estatisticas.order_by('-pontos')
+
+    return render(request, 'torneio/historico.html', {
+        'torneios'    : torneios,
+        'torneio'     : torneio,       # None ou objeto
+        'stats': estatisticas,  # None ou ranking
+    })
 
 # def administrar_batalha(request, batalha_id):
 #     # 1) Buscar a batalha ou retornar 404 simples

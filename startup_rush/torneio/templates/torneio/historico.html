@@ -1,0 +1,45 @@
+{% extends "torneio/base.html" %}
+{% block content %}
+
+  <h2>Torneios Finalizados</h2>
+  <ul>
+    {% for t in torneios %}
+      <li>
+        Torneio #{{ t.numero }} – Campeã: {{ t.campea.nome }}
+        {# link ?numero=x recarrega a mesma página #}
+        <a href="?numero={{ t.numero }}">Ver estatísticas</a>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {# ---------- bloco de estatísticas, se algum torneio foi escolhido ---------- #}
+  {% if torneio %}
+    <hr>
+    <h3>Estatísticas – Torneio #{{ torneio.numero }}</h3>
+
+    {% if stats %}
+      <table border="1" cellpadding="4">
+        <tr>
+          <th>#</th><th>Startup</th><th>Pontos</th>
+          <th>Pitches</th><th>Bugs</th><th>Trações</th>
+          <th>Invest. Irritados</th><th>Fake News</th>
+        </tr>
+        {% for r in stats %}
+          <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ r.startup.nome }}</td>
+            <td>{{ r.pontos }}</td>
+            <td>{{ r.pitches }}</td>
+            <td>{{ r.bugs }}</td>
+            <td>{{ r.tracoes }}</td>
+            <td>{{ r.investidores }}</td>
+            <td>{{ r.penalidades }}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% else %}
+      <p>Sem ranking salvo para este torneio.</p>
+    {% endif %}
+  {% endif %}
+
+{% endblock %}
